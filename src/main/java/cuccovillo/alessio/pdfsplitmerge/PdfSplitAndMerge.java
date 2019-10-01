@@ -13,7 +13,7 @@ public class PdfSplitAndMerge {
 			public void run() {
 				try {
 					Main window = new Main();
-					window.setVisible(true);
+					window.show();
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

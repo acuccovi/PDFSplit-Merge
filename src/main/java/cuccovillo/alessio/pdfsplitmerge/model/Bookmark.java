@@ -5,10 +5,12 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPa
 public class Bookmark {
 	private String title;
 	private PDPageDestination destination;
+	private int lastPage;
 
 	public Bookmark(String title, PDPageDestination destination) {
 		this.title = title;
 		this.destination = destination;
+		lastPage = -1;
 	}
 
 	public String getTitle() {
@@ -19,8 +21,16 @@ public class Bookmark {
 		return destination;
 	}
 
-	public int getDestinationPage() {
+	public int getFirstPage() {
 		return destination.retrievePageNumber();
+	}
+
+	public int getLastPage() {
+		return lastPage;
+	}
+
+	public void setLastPage(int lastPage) {
+		this.lastPage = lastPage;
 	}
 
 	@Override

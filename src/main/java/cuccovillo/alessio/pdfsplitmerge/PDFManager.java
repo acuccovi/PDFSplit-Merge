@@ -22,11 +22,9 @@ public class PDFManager {
 
 	public void load(File pdf) throws IOException, BookmarkNotFoundException {
 		doc = PDDocument.load(pdf);
-
-		findBookmarks();
-
 		pageCount = doc.getNumberOfPages();
-
+		bookmarks = findBookmarks();
+		doc.close();
 	}
 
 	public List<Bookmark> getBookmarks() {
@@ -37,26 +35,46 @@ public class PDFManager {
 		return pageCount;
 	}
 
-	private void findBookmarks() throws BookmarkNotFoundException, IOException {
-		bookmarks = new ArrayList<Bookmark>();
+	private List<Bookmark> findBookmarks() throws IOException {
+		List<Bookmark> bookmarks = new ArrayList<>();
 		PDDocumentOutline outline = doc.getDocumentCatalog().getDocumentOutline();
-		if (outline == null) {
+		try {
+			if (outline == null) {
+				throw new BookmarkNotFoundException();
+			}
+			PDOutlineItem current = outline.getFirstChild();
+			while (current != null) {
+				PDDestination destination = current.getDestination();
+				PDPageDestination pd = findValidBookmark(destination);
+				Bookmark bookmark = new Bookmark(current.getTitle(), pd);
+				bookmarks.add(bookmark);
+				if (bookmarks.size() > 1) {
+					Bookmark previuos = bookmarks.get((bookmarks.size() - 1) - 1);
+					if (previuos != null) {
+						previuos.setLastPage(bookmark.getFirstPage());
+					}
+				}
+				current = current.getNextSibling();
+			}
+			Bookmark last = bookmarks.get(bookmarks.size() - 1);
+			last.setLastPage(getPageCount());
+		} catch (BookmarkNotFoundException e) {
+			// nothing to do!
+		}
+		return bookmarks;
+	}
+
+	private PDPageDestination findValidBookmark(PDDestination destination)
+			throws IOException, BookmarkNotFoundException {
+		PDPageDestination pd = null;
+		if (destination instanceof PDNamedDestination) {
+			pd = doc.getDocumentCatalog().findNamedDestinationPage((PDNamedDestination) destination);
+		} else if (destination instanceof PDPageDestination) {
+			pd = (PDPageDestination) destination;
+		}
+		if (pd == null) {
 			throw new BookmarkNotFoundException();
 		}
-		PDOutlineItem current = outline.getFirstChild();
-		while (current != null) {
-			PDDestination destination = current.getDestination();
-			if (destination instanceof PDNamedDestination) {
-				PDPageDestination pd = doc.getDocumentCatalog()
-						.findNamedDestinationPage((PDNamedDestination) destination);
-				if (pd != null) {
-					bookmarks.add(new Bookmark(current.getTitle(), pd));
-				}
-			} else if (destination instanceof PDPageDestination) {
-				bookmarks.add(new Bookmark(current.getTitle(), (PDPageDestination) destination));
-			}
-			current = current.getNextSibling();
-		}
-
+		return pd;
 	}
 }
