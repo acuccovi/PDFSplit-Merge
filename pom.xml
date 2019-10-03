@@ -13,12 +13,6 @@
 		<project.mainclass>cuccovillo.alessio.pdfsplitmerge.PdfSplitAndMerge</project.mainclass>
 	</properties>
 	<dependencies>
-		<!-- <dependency> -->
-		<!-- <groupId>com.itextpdf</groupId> -->
-		<!-- <artifactId>itext7-core</artifactId> -->
-		<!-- <version>7.1.8</version> -->
-		<!-- <type>pom</type> -->
-		<!-- </dependency> -->
 		<dependency>
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>

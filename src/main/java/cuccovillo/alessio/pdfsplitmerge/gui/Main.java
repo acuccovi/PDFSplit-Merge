@@ -3,11 +3,17 @@ package cuccovillo.alessio.pdfsplitmerge.gui;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -20,17 +26,17 @@ import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
-import cuccovillo.alessio.pdfsplitmerge.PDFManager;
 import cuccovillo.alessio.pdfsplitmerge.exceptions.BookmarkNotFoundException;
 import cuccovillo.alessio.pdfsplitmerge.i18n.I18NLoader;
 import cuccovillo.alessio.pdfsplitmerge.model.Bookmark;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.event.ListSelectionEvent;
+import cuccovillo.alessio.pdfsplitmerge.pdf.PDFManager;
 
 public class Main {
 	private JFrame frame;
-	private JTextField textField;
+	private JTextField txtPageRange;
 	private JList<Bookmark> lstBookmarks;
 	private JRadioButton rdbtnBookmarks;
 	private JRadioButton rdbtnPageRange;
@@ -42,10 +48,15 @@ public class Main {
 	 * @wbp.nonvisual location=24,329
 	 */
 	private final JFileChooser fileChooser = new JFileChooser();
+	/**
+	 * @wbp.nonvisual location=94,329
+	 */
+	private final JFileChooser directoryChooser = new JFileChooser();
 
 	private DefaultListModel<Bookmark> listModel;
 	private File currentPath;
 	private File currentPDF;
+	private File currentOutPath;
 	private PDFManager pdfManager;
 	private final static String MAIN_TITLE;
 
@@ -60,6 +71,7 @@ public class Main {
 		initialize();
 		currentPath = new File(System.getProperty("user.home"));
 		currentPDF = null;
+		currentOutPath = null;
 		pdfManager = new PDFManager();
 	}
 
@@ -73,7 +85,22 @@ public class Main {
 	private void initialize() {
 		fileChooser.setAcceptAllFileFilterUsed(false);
 		fileChooser.setFileFilter(new PDFOnlyFileFilter());
+		directoryChooser.setFileSelectionMode(1);
+		directoryChooser.setAcceptAllFileFilterUsed(false);
+		directoryChooser.setFileFilter(new DirectoryOnlyFileFilter());
 		frame = new JFrame();
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				if (pdfManager != null) {
+					try {
+						pdfManager.close();
+					} catch (IOException ioe) {
+						showError(ioe);
+					}
+				}
+			}
+		});
 		BorderLayout borderLayout = (BorderLayout) frame.getContentPane().getLayout();
 		borderLayout.setVgap(10);
 		borderLayout.setHgap(10);
@@ -114,6 +141,12 @@ public class Main {
 		pnlTabSplitCenter.setLayout(new BorderLayout(0, 0));
 
 		rdbtnBookmarks = new JRadioButton(I18NLoader.getString("rdbtnBookmarks.text"));
+		rdbtnBookmarks.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				setActiveRadioButton(rdbtnBookmarks);
+			}
+		});
+		rdbtnBookmarks.setEnabled(false);
 		rdbtnBookmarks.setSelected(true);
 		pnlTabSplitCenter.add(rdbtnBookmarks, BorderLayout.NORTH);
 
@@ -134,11 +167,24 @@ public class Main {
 		pnlTabSplitBottom.setLayout(new BorderLayout(0, 0));
 
 		rdbtnPageRange = new JRadioButton(I18NLoader.getString("rdbtnPageRange"));
+		rdbtnPageRange.setEnabled(false);
+		rdbtnPageRange.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				setActiveRadioButton(rdbtnPageRange);
+			}
+		});
 		pnlTabSplitBottom.add(rdbtnPageRange, BorderLayout.NORTH);
 
-		textField = new JTextField();
-		pnlTabSplitBottom.add(textField, BorderLayout.CENTER);
-		textField.setColumns(10);
+		txtPageRange = new JTextField();
+		txtPageRange.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				enableBtnSplitFromPageRange();
+			}
+		});
+		txtPageRange.setEnabled(false);
+		pnlTabSplitBottom.add(txtPageRange, BorderLayout.CENTER);
+		txtPageRange.setColumns(10);
 
 		JPanel pnlTabMerge = new JPanel();
 		tabbedPane.addTab(I18NLoader.getString("pnlTabMerge.text"), null, pnlTabMerge, null);
@@ -165,6 +211,25 @@ public class Main {
 		scrollPane_1.setViewportView(lstFiles);
 	}
 
+	private void setActiveRadioButton(JRadioButton component) {
+		rdbtnPageRange.setEnabled(true);
+		if (component.equals(rdbtnBookmarks)) {
+			rdbtnBookmarks.setEnabled(true);
+			rdbtnBookmarks.setSelected(true);
+			rdbtnPageRange.setSelected(false);
+			txtPageRange.setEnabled(false);
+			enableBtnSplitFromBookmarks();
+		} else if (component.equals(rdbtnPageRange)) {
+			if (listModel.getSize() == 0) {
+				rdbtnBookmarks.setEnabled(false);
+			}
+			rdbtnBookmarks.setSelected(false);
+			rdbtnPageRange.setSelected(true);
+			txtPageRange.setEnabled(true);
+			enableBtnSplitFromPageRange();
+		}
+	}
+
 	private void choosePDF() {
 		fileChooser.setCurrentDirectory(currentPath);
 		fileChooser.setSelectedFile(currentPDF);
@@ -174,24 +239,14 @@ public class Main {
 			try {
 				extractBookmarks(currentPDF);
 				if (listModel.getSize() == 0) {
-					rdbtnBookmarks.setEnabled(false);
-					rdbtnBookmarks.setSelected(false);
-					rdbtnPageRange.setSelected(true);
+					setActiveRadioButton(rdbtnPageRange);
 				} else {
-					rdbtnBookmarks.setEnabled(true);
-					rdbtnBookmarks.setSelected(true);
-					rdbtnPageRange.setSelected(false);
+					setActiveRadioButton(rdbtnBookmarks);
 				}
 				JOptionPane.showMessageDialog(frame, String.format(I18NLoader.getString("file.loaded.message"),
 						listModel.getSize(), pdfManager.getPageCount()), MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
 			} catch (IOException e) {
-				try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
-					e.printStackTrace(pw);
-					ErrorPanel errorPanel = new ErrorPanel(sw.toString());
-					JOptionPane.showMessageDialog(frame, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
-				} catch (Exception e2) {
-					// do nothing
-				}
+				showError(e);
 			}
 		}
 	}
@@ -220,7 +275,58 @@ public class Main {
 		}
 	}
 
+	private void enableBtnSplitFromPageRange() {
+		if (txtPageRange.getText().trim().length() > 0) {
+			btnSplit.setEnabled(true);
+		} else {
+			btnSplit.setEnabled(false);
+		}
+	}
+
 	private void splitPdf() {
-		JOptionPane.showMessageDialog(frame, "Hi!", MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+		try {
+			directoryChooser.setCurrentDirectory(currentOutPath);
+			if (rdbtnPageRange.isSelected()) {
+				if (txtPageRange.getText().trim().length() == 0)
+					throw new Exception("Pattern not valid!");
+			}
+			if (currentOutPath == null) {
+				currentOutPath = currentPath;
+			}
+			if (directoryChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
+				currentOutPath = directoryChooser.getSelectedFile();
+				if (rdbtnBookmarks.isSelected()) {
+					pdfManager.split(currentOutPath, lstBookmarks.getSelectedValuesList());
+				} else if (rdbtnPageRange.isSelected()) {
+					String[] p1 = txtPageRange.getText().trim().split(",");
+					List<Bookmark> bookmarks = new ArrayList<>();
+					for (String s : p1) {
+						String[] p2 = s.split("-");
+						int firstPage = Integer.parseInt(p2[0]);
+						int lastPage = firstPage;
+						if (p2.length == 2) {
+							lastPage = Integer.parseInt(p2[1]);
+						}
+						String title = String.format("%s [%s-%s]", currentPDF.getName(), firstPage, lastPage);
+						Bookmark bookmark = new Bookmark(title, firstPage, lastPage);
+						bookmarks.add(bookmark);
+					}
+					pdfManager.split(currentOutPath, bookmarks);
+				}
+				JOptionPane.showMessageDialog(frame, "Done!", MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+			}
+		} catch (Exception e) {
+			showError(e);
+		}
+	}
+
+	private void showError(Throwable t) {
+		try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
+			t.printStackTrace(pw);
+			ErrorPanel errorPanel = new ErrorPanel(sw.toString());
+			JOptionPane.showMessageDialog(frame, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
+		} catch (Exception e2) {
+			// do nothing
+		}
 	}
 }
