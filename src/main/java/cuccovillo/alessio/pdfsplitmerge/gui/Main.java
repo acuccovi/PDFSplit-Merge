@@ -9,11 +9,14 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -38,11 +41,11 @@ public class Main {
 	private JFrame frame;
 	private JTextField txtPageRange;
 	private JList<Bookmark> lstBookmarks;
+	private JList<File> lstFiles;
 	private JRadioButton rdbtnBookmarks;
 	private JRadioButton rdbtnPageRange;
 	private JButton btnMerge;
 	private JButton btnSplit;
-	private JList<File> lstFiles;
 	private JButton btnLoadMerge;
 	/**
 	 * @wbp.nonvisual location=24,329
@@ -53,7 +56,8 @@ public class Main {
 	 */
 	private final JFileChooser directoryChooser = new JFileChooser();
 
-	private DefaultListModel<Bookmark> listModel;
+	private DefaultListModel<Bookmark> bookmarkListModel;
+	private DefaultListModel<File> mergeListModel;
 	private File currentPath;
 	private File currentPDF;
 	private File currentOutPath;
@@ -68,11 +72,13 @@ public class Main {
 	 * Create the application.
 	 */
 	public Main() {
-		initialize();
+		bookmarkListModel = new DefaultListModel<>();
+		mergeListModel = new DefaultListModel<File>();
 		currentPath = new File(System.getProperty("user.home"));
 		currentPDF = null;
 		currentOutPath = null;
 		pdfManager = new PDFManager();
+		initialize();
 	}
 
 	public void show() {
@@ -107,8 +113,7 @@ public class Main {
 		frame.setTitle(MAIN_TITLE);
 		frame.setBounds(100, 100, 450, 300);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		listModel = new DefaultListModel<>();
-
+		
 		JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
 		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
 
@@ -159,7 +164,7 @@ public class Main {
 				enableBtnSplitFromBookmarks();
 			}
 		});
-		lstBookmarks.setModel(listModel);
+		lstBookmarks.setModel(bookmarkListModel);
 		scrollPane.setViewportView(lstBookmarks);
 
 		JPanel pnlTabSplitBottom = new JPanel();
@@ -194,9 +199,19 @@ public class Main {
 		pnlTabMerge.add(pnlTabMergeTop, BorderLayout.NORTH);
 
 		btnLoadMerge = new JButton(I18NLoader.getString("btnLoadMerge.text"));
+		btnLoadMerge.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				choosePDFs();
+			}
+		});
 		pnlTabMergeTop.add(btnLoadMerge);
 
 		btnMerge = new JButton(I18NLoader.getString("btnMerge.text"));
+		btnMerge.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				mergeFiles();
+			}
+		});
 		btnMerge.setEnabled(false);
 		pnlTabMergeTop.add(btnMerge);
 
@@ -208,9 +223,11 @@ public class Main {
 		pnlTabMergeCenter.add(scrollPane_1);
 
 		lstFiles = new JList<>();
+		lstFiles.setModel(mergeListModel);
 		scrollPane_1.setViewportView(lstFiles);
 	}
 
+	// SPLIT
 	private void setActiveRadioButton(JRadioButton component) {
 		rdbtnPageRange.setEnabled(true);
 		if (component.equals(rdbtnBookmarks)) {
@@ -220,7 +237,7 @@ public class Main {
 			txtPageRange.setEnabled(false);
 			enableBtnSplitFromBookmarks();
 		} else if (component.equals(rdbtnPageRange)) {
-			if (listModel.getSize() == 0) {
+			if (bookmarkListModel.getSize() == 0) {
 				rdbtnBookmarks.setEnabled(false);
 			}
 			rdbtnBookmarks.setSelected(false);
@@ -233,18 +250,18 @@ public class Main {
 	private void choosePDF() {
 		fileChooser.setCurrentDirectory(currentPath);
 		fileChooser.setSelectedFile(currentPDF);
+		fileChooser.setMultiSelectionEnabled(false);
 		if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
 			currentPath = fileChooser.getCurrentDirectory();
 			currentPDF = fileChooser.getSelectedFile();
 			try {
 				extractBookmarks(currentPDF);
-				if (listModel.getSize() == 0) {
+				if (bookmarkListModel.getSize() == 0) {
 					setActiveRadioButton(rdbtnPageRange);
 				} else {
 					setActiveRadioButton(rdbtnBookmarks);
 				}
-				JOptionPane.showMessageDialog(frame, String.format(I18NLoader.getString("file.loaded.message"),
-						listModel.getSize(), pdfManager.getPageCount()), MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+				showMessage(String.format(I18NLoader.getString("file.loaded.message"), bookmarkListModel.getSize(), pdfManager.getPageCount()));
 			} catch (IOException e) {
 				showError(e);
 			}
@@ -252,16 +269,14 @@ public class Main {
 	}
 
 	private void extractBookmarks(File pdf) throws FileNotFoundException, IOException {
-		listModel.clear();
+		bookmarkListModel.clear();
 		try {
 			pdfManager.load(pdf);
 			for (Bookmark bookmark : pdfManager.getBookmarks()) {
-				listModel.addElement(bookmark);
+				bookmarkListModel.addElement(bookmark);
 			}
 		} catch (BookmarkNotFoundException bnfe) {
-			JOptionPane.showMessageDialog(frame,
-					String.format(I18NLoader.getString("BookmarkNotFoundException.message"), pdf.toString()),
-					MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+			showMessage(String.format(I18NLoader.getString("BookmarkNotFoundException.message"), pdf.toString()));
 		}
 	}
 
@@ -295,11 +310,11 @@ public class Main {
 			}
 			if (directoryChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
 				currentOutPath = directoryChooser.getSelectedFile();
+				List<Bookmark> bookmarks = new ArrayList<>();
 				if (rdbtnBookmarks.isSelected()) {
-					pdfManager.split(currentOutPath, lstBookmarks.getSelectedValuesList());
+					bookmarks.addAll(lstBookmarks.getSelectedValuesList());
 				} else if (rdbtnPageRange.isSelected()) {
 					String[] p1 = txtPageRange.getText().trim().split(",");
-					List<Bookmark> bookmarks = new ArrayList<>();
 					for (String s : p1) {
 						String[] p2 = s.split("-");
 						int firstPage = Integer.parseInt(p2[0]);
@@ -311,15 +326,63 @@ public class Main {
 						Bookmark bookmark = new Bookmark(title, firstPage, lastPage);
 						bookmarks.add(bookmark);
 					}
-					pdfManager.split(currentOutPath, bookmarks);
 				}
-				JOptionPane.showMessageDialog(frame, "Done!", MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+				Map<Integer, byte[]> pdfs = pdfManager.split(bookmarks);
+				for (int id : pdfs.keySet()) {
+					String title = PDFManager.convertTitleToFileName(bookmarks.get(id).getTitle());
+					String fileName = String.format("%s - %s.pdf", id, title);
+					String out = Paths.get(currentOutPath.toString(), fileName).toString();
+					try (FileOutputStream fos = new FileOutputStream(out)) {
+						fos.write(pdfs.get(id));
+					}
+				}
+				showMessage(I18NLoader.getString("process.done.message"));
 			}
 		} catch (Exception e) {
 			showError(e);
 		}
 	}
 
+	// MERGE
+	private void choosePDFs() {
+		fileChooser.setCurrentDirectory(currentPath);
+		fileChooser.setSelectedFile(currentPDF);
+		fileChooser.setMultiSelectionEnabled(true);
+		if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
+			mergeListModel.clear();
+			currentPath = fileChooser.getCurrentDirectory();
+			for (File pdf : fileChooser.getSelectedFiles()) {
+				mergeListModel.addElement(pdf);
+			}
+		}
+		if (mergeListModel.getSize() < 2) {
+			btnMerge.setEnabled(false);
+		} else {
+			btnMerge.setEnabled(true);
+		}
+	}
+
+	private void mergeFiles() {
+		try {
+			fileChooser.setMultiSelectionEnabled(false);
+			fileChooser.setSelectedFile(null);
+			if (fileChooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
+				List<File> files = new ArrayList<>(mergeListModel.getSize());
+				for (int i = 0; i < mergeListModel.getSize(); i++) {
+					files.add(mergeListModel.get(i));
+				}
+				byte[] pdf = pdfManager.merge(files);
+				try (FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
+					fos.write(pdf);
+				}
+				showMessage(I18NLoader.getString("process.done.message"));
+			}
+		} catch (Exception e) {
+			showError(e);
+		}
+	}
+	
+	// COMMON
 	private void showError(Throwable t) {
 		try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
 			t.printStackTrace(pw);
@@ -328,5 +391,9 @@ public class Main {
 		} catch (Exception e2) {
 			// do nothing
 		}
+	}
+	
+	private void showMessage(String message) {
+		JOptionPane.showMessageDialog(frame, message, MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
 	}
 }

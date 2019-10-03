@@ -1,8 +1,10 @@
 package cuccovillo.alessio.pdfsplitmerge.pdf;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.Map;
 import org.apache.pdfbox.cos.COSBase;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.multipdf.PageExtractor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -28,6 +32,13 @@ public class PDFManager {
 	private List<Bookmark> bookmarks;
 	private int pageCount;
 
+	public void load(File pdf) throws IOException, BookmarkNotFoundException {
+		close();
+		document = PDDocument.load(pdf);
+		pageCount = document.getNumberOfPages();
+		bookmarks = findBookmarks();
+	}
+
 	public List<Bookmark> getBookmarks() {
 		return bookmarks;
 	}
@@ -36,34 +47,53 @@ public class PDFManager {
 		return pageCount;
 	}
 
-	public void load(File pdf) throws IOException, BookmarkNotFoundException {
-		close();
-		document = PDDocument.load(pdf);
-		pageCount = document.getNumberOfPages();
-		bookmarks = findBookmarks();
-	}
-
 	public void close() throws IOException {
 		if (document != null) {
 			document.close();
 		}
 	}
 
-	public void split(File path, List<Bookmark> bookmarks) throws IOException {
-		int i = 1;
+	/**
+	 * Split the input file based on the selected bookmark(s)
+	 * @param path
+	 * @param bookmarks
+	 * @throws IOException
+	 */
+	public Map<Integer, byte[]> split(List<Bookmark> bookmarks) throws IOException {
+		Map<Integer, byte[]> output = new HashMap<>();
+		int i = 0;
 		for (Bookmark bookmark : bookmarks) {
-			String title = bookmark.getTitle().replaceAll("[<>:\"/\\|?*]", "_");
-			String fileName = i + " - " + title + ".pdf";
-			String outPath = Paths.get(path.toString(), fileName).toString();
 			int start = bookmark.getFirstPage() == bookmark.getLastPage() ? bookmark.getFirstPage()
 					: bookmark.getFirstPage() + 1;
 			PageExtractor pe = new PageExtractor(document, start, bookmark.getLastPage());
 			PDDocument outDoc = pe.extract();
 			optimize(outDoc);
-			outDoc.save(outPath);
+			ByteArrayOutputStream baos=new ByteArrayOutputStream();
+			outDoc.save(baos);
 			outDoc.close();
+			output.put(i, baos.toByteArray());
 			i++;
 		}
+		return output;
+	}
+	
+	public byte[] merge(List<File> files) throws FileNotFoundException, IOException  {
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		PDFMergerUtility merger = new PDFMergerUtility();
+		merger.setDestinationStream(baos);
+		merger.mergeDocuments(MemoryUsageSetting.setupTempFileOnly());
+		for (File file : files) {
+			merger.addSource(file);
+		}
+		merger.mergeDocuments(MemoryUsageSetting.setupTempFileOnly());
+		PDDocument outDoc = PDDocument.load(new ByteArrayInputStream(baos.toByteArray()));
+		optimize(outDoc);
+		outDoc.save(baos);
+		return baos.toByteArray();
+	}
+	
+	public static String convertTitleToFileName(String title) {
+		return title.replaceAll("[<>:\"/\\|?*]", "_");
 	}
 
 	private List<Bookmark> findBookmarks() throws IOException {
