@@ -258,7 +258,8 @@ public class Main extends javax.swing.JFrame {
 
         getContentPane().add(tabbedPane, java.awt.BorderLayout.CENTER);
 
-        pack();
+        setSize(new java.awt.Dimension(450, 300));
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     // Event handler
@@ -561,7 +562,6 @@ public class Main extends javax.swing.JFrame {
     private javax.swing.JButton btnSplit;
     private javax.swing.JButton btnTop;
     private javax.swing.JButton btnUp;
-    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JList<Bookmark> lstBookmarks;
     private javax.swing.JList<File> lstFiles;
     private javax.swing.JPanel pnlTabMerge;
