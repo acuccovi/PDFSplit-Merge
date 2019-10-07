@@ -1,28 +1,15 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
  */
 package cuccovillo.alessio.pdfsplitmerge.gui;
 
-import java.awt.BorderLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import cuccovillo.alessio.pdfsplitmerge.exceptions.BookmarkNotFoundException;
+import cuccovillo.alessio.pdfsplitmerge.i18n.I18NLoader;
+import cuccovillo.alessio.pdfsplitmerge.model.Bookmark;
+import cuccovillo.alessio.pdfsplitmerge.pdf.PDFManager;
+import java.awt.HeadlessException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -33,494 +20,563 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import javax.swing.DefaultListModel;
-import javax.swing.JButton;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JList;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 
-import cuccovillo.alessio.pdfsplitmerge.exceptions.BookmarkNotFoundException;
-import cuccovillo.alessio.pdfsplitmerge.i18n.I18NLoader;
-import cuccovillo.alessio.pdfsplitmerge.model.Bookmark;
-import cuccovillo.alessio.pdfsplitmerge.pdf.PDFManager;
-import java.awt.GridLayout;
+/**
+ *
+ * @author Alessio.Cuccovillo
+ */
+public class Main extends javax.swing.JFrame {
 
-public class Main {
-	private JFrame frame;
-	private JTextField txtPageRange;
-	private JList<Bookmark> lstBookmarks;
-	private JList<File> lstFiles;
-	private JRadioButton rdbtnBookmarks;
-	private JRadioButton rdbtnPageRange;
-	private JButton btnMerge;
-	private JButton btnSplit;
-	private JButton btnLoadMerge;
-	private JButton btnRemove;
-	private JButton btnTop;
-	private JButton btnUp;
-	private JButton btnDown;
-	private JButton btnBottom;
-	/**
-	 * @wbp.nonvisual location=24,329
-	 */
-	private final JFileChooser fileChooser = new JFileChooser();
-	/**
-	 * @wbp.nonvisual location=94,329
-	 */
-	private final JFileChooser directoryChooser = new JFileChooser();
+    private final JFileChooser fileChooser;
+    private final JFileChooser directoryChooser;
 
-	private DefaultListModel<Bookmark> bookmarkListModel;
-	private DefaultListModel<File> mergeListModel;
-	private File currentPath;
-	private File currentPDF;
-	private File currentOutPath;
-	private PDFManager pdfManager;
-	private final static String MAIN_TITLE;
+    private final PDFManager pdfManager;
+    private final DefaultListModel<Bookmark> bookmarkListModel;
+    private final DefaultListModel<File> mergeListModel;
+    private File currentPath;
+    private File currentPDF;
+    private File currentOutPath;
 
-	static {
-		MAIN_TITLE = I18NLoader.getString("main.title");
-	}
+    private final static String MAIN_TITLE;
 
-	/**
-	 * Create the application.
-	 */
-	public Main() {
-		bookmarkListModel = new DefaultListModel<>();
-		mergeListModel = new DefaultListModel<File>();
-		currentPath = new File(System.getProperty("user.home"));
-		currentPDF = null;
-		currentOutPath = null;
-		pdfManager = new PDFManager();
-		initialize();
-	}
+    static {
+        MAIN_TITLE = I18NLoader.getString("main.title");
+    }
 
-	public void show() {
-		frame.setVisible(true);
-	}
+    /**
+     * Creates new form Main
+     */
+    public Main() {
+        bookmarkListModel = new DefaultListModel<>();
+        mergeListModel = new DefaultListModel<>();
+        pdfManager = new PDFManager();
 
-	/**
-	 * Initialize the contents of the frame.
-	 */
-	private void initialize() {
-		fileChooser.setAcceptAllFileFilterUsed(false);
-		fileChooser.setFileFilter(new PDFOnlyFileFilter());
-		directoryChooser.setFileSelectionMode(1);
-		directoryChooser.setAcceptAllFileFilterUsed(false);
-		directoryChooser.setFileFilter(new DirectoryOnlyFileFilter());
-		frame = new JFrame();
-		frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				if (pdfManager != null) {
-					try {
-						pdfManager.close();
-					} catch (IOException ioe) {
-						showError(ioe);
-					}
-				}
-			}
-		});
-		BorderLayout borderLayout = (BorderLayout) frame.getContentPane().getLayout();
-		borderLayout.setVgap(10);
-		borderLayout.setHgap(10);
-		frame.setTitle(MAIN_TITLE);
-		frame.setBounds(100, 100, 450, 300);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		
-		JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+        currentPath = new File(System.getProperty("user.home"));
+        currentPDF = null;
+        currentOutPath = null;
 
-		JPanel pnlTabSplit = new JPanel();
-		tabbedPane.addTab(I18NLoader.getString("pnlTabSplit.text"), null, pnlTabSplit, null);
-		pnlTabSplit.setLayout(new BorderLayout(0, 0));
+        fileChooser = new JFileChooser();
+        fileChooser.setAcceptAllFileFilterUsed(false);
+        fileChooser.setFileFilter(new PDFOnlyFileFilter());
 
-		JPanel pnlTabSplitTop = new JPanel();
-		pnlTabSplit.add(pnlTabSplitTop, BorderLayout.NORTH);
+        directoryChooser = new JFileChooser();
+        directoryChooser.setFileSelectionMode(1);
+        directoryChooser.setAcceptAllFileFilterUsed(false);
+        directoryChooser.setFileFilter(new DirectoryOnlyFileFilter());
 
-		JButton btnLoadSplit = new JButton(I18NLoader.getString("btnLoadSplit.text"));
-		btnLoadSplit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				choosePDF();
-			}
-		});
-		pnlTabSplitTop.add(btnLoadSplit);
+        initComponents();
+    }
 
-		btnSplit = new JButton(I18NLoader.getString("btnSplit.text"));
-		btnSplit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				splitPdf();
-			}
-		});
-		btnSplit.setEnabled(false);
-		pnlTabSplitTop.add(btnSplit);
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    @SuppressWarnings("unchecked")
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
 
-		JPanel pnlTabSplitCenter = new JPanel();
-		pnlTabSplit.add(pnlTabSplitCenter, BorderLayout.CENTER);
-		pnlTabSplitCenter.setLayout(new BorderLayout(0, 0));
+        tabbedPane = new javax.swing.JTabbedPane();
+        pnlTabSplit = new javax.swing.JPanel();
+        pnlTabSplitTop = new javax.swing.JPanel();
+        btnLoadSplit = new javax.swing.JButton();
+        btnSplit = new javax.swing.JButton();
+        pnlTabSplitCenter = new javax.swing.JPanel();
+        rdbtnBookmarks = new javax.swing.JRadioButton();
+        scrollPane = new javax.swing.JScrollPane();
+        lstBookmarks = new javax.swing.JList<>();
+        pnlTabSplitBottom = new javax.swing.JPanel();
+        rdbtnPageRange = new javax.swing.JRadioButton();
+        txtPageRange = new javax.swing.JTextField();
+        pnlTabMerge = new javax.swing.JPanel();
+        pnlTabMergeTop = new javax.swing.JPanel();
+        btnLoadMerge = new javax.swing.JButton();
+        btnMerge = new javax.swing.JButton();
+        pnlTabMergeCenter = new javax.swing.JPanel();
+        scrollPane_1 = new javax.swing.JScrollPane();
+        lstFiles = new javax.swing.JList<>();
+        pnlTabMergeRight = new javax.swing.JPanel();
+        btnRemove = new javax.swing.JButton();
+        btnTop = new javax.swing.JButton();
+        btnUp = new javax.swing.JButton();
+        btnDown = new javax.swing.JButton();
+        btnBottom = new javax.swing.JButton();
 
-		rdbtnBookmarks = new JRadioButton(I18NLoader.getString("rdbtnBookmarks.text"));
-		rdbtnBookmarks.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				setActiveRadioButton(rdbtnBookmarks);
-			}
-		});
-		rdbtnBookmarks.setEnabled(false);
-		rdbtnBookmarks.setSelected(true);
-		pnlTabSplitCenter.add(rdbtnBookmarks, BorderLayout.NORTH);
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setTitle(I18NLoader.getString("main.title")); // NOI18N
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
-		JScrollPane scrollPane = new JScrollPane();
-		pnlTabSplitCenter.add(scrollPane);
+        pnlTabSplit.setLayout(new java.awt.BorderLayout());
 
-		lstBookmarks = new JList<>();
-		lstBookmarks.addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				enableBtnSplitFromBookmarks();
-			}
-		});
-		lstBookmarks.setModel(bookmarkListModel);
-		scrollPane.setViewportView(lstBookmarks);
+        btnLoadSplit.setText(I18NLoader.getString("btnLoadSplit.text")); // NOI18N
+        btnLoadSplit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLoadSplitActionPerformed(evt);
+            }
+        });
+        pnlTabSplitTop.add(btnLoadSplit);
 
-		JPanel pnlTabSplitBottom = new JPanel();
-		pnlTabSplit.add(pnlTabSplitBottom, BorderLayout.SOUTH);
-		pnlTabSplitBottom.setLayout(new BorderLayout(0, 0));
+        btnSplit.setText(I18NLoader.getString("btnSplit.text")); // NOI18N
+        btnSplit.setEnabled(false);
+        btnSplit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSplitActionPerformed(evt);
+            }
+        });
+        pnlTabSplitTop.add(btnSplit);
 
-		rdbtnPageRange = new JRadioButton(I18NLoader.getString("rdbtnPageRange"));
-		rdbtnPageRange.setEnabled(false);
-		rdbtnPageRange.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				setActiveRadioButton(rdbtnPageRange);
-			}
-		});
-		pnlTabSplitBottom.add(rdbtnPageRange, BorderLayout.NORTH);
+        pnlTabSplit.add(pnlTabSplitTop, java.awt.BorderLayout.NORTH);
 
-		txtPageRange = new JTextField();
-		txtPageRange.addKeyListener(new KeyAdapter() {
-			@Override
-			public void keyReleased(KeyEvent e) {
-				enableBtnSplitFromPageRange();
-			}
-		});
-		txtPageRange.setEnabled(false);
-		pnlTabSplitBottom.add(txtPageRange, BorderLayout.CENTER);
-		txtPageRange.setColumns(10);
+        pnlTabSplitCenter.setLayout(new java.awt.BorderLayout());
 
-		JPanel pnlTabMerge = new JPanel();
-		tabbedPane.addTab(I18NLoader.getString("pnlTabMerge.text"), null, pnlTabMerge, null);
-		pnlTabMerge.setLayout(new BorderLayout(0, 0));
+        rdbtnBookmarks.setText(I18NLoader.getString("rdbtnBookmarks.text")); // NOI18N
+        rdbtnBookmarks.setEnabled(false);
+        rdbtnBookmarks.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rdbtnBookmarksActionPerformed(evt);
+            }
+        });
+        pnlTabSplitCenter.add(rdbtnBookmarks, java.awt.BorderLayout.PAGE_START);
 
-		JPanel pnlTabMergeTop = new JPanel();
-		pnlTabMerge.add(pnlTabMergeTop, BorderLayout.NORTH);
+        lstBookmarks.setModel(bookmarkListModel);
+        lstBookmarks.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                lstBookmarksValueChanged(evt);
+            }
+        });
+        scrollPane.setViewportView(lstBookmarks);
 
-		btnLoadMerge = new JButton(I18NLoader.getString("btnLoadMerge.text"));
-		btnLoadMerge.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				choosePDFs();
-			}
-		});
-		pnlTabMergeTop.add(btnLoadMerge);
+        pnlTabSplitCenter.add(scrollPane, java.awt.BorderLayout.CENTER);
 
-		btnMerge = new JButton(I18NLoader.getString("btnMerge.text"));
-		btnMerge.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				mergeFiles();
-			}
-		});
-		btnMerge.setEnabled(false);
-		pnlTabMergeTop.add(btnMerge);
+        pnlTabSplit.add(pnlTabSplitCenter, java.awt.BorderLayout.CENTER);
 
-		JPanel pnlTabMergeCenter = new JPanel();
-		pnlTabMerge.add(pnlTabMergeCenter, BorderLayout.CENTER);
-		pnlTabMergeCenter.setLayout(new BorderLayout(0, 0));
+        pnlTabSplitBottom.setLayout(new java.awt.BorderLayout());
 
-		JScrollPane scrollPane_1 = new JScrollPane();
-		pnlTabMergeCenter.add(scrollPane_1);
+        rdbtnPageRange.setText(I18NLoader.getString("rdbtnPageRange")); // NOI18N
+        rdbtnPageRange.setEnabled(false);
+        rdbtnPageRange.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rdbtnPageRangeActionPerformed(evt);
+            }
+        });
+        pnlTabSplitBottom.add(rdbtnPageRange, java.awt.BorderLayout.NORTH);
 
-		lstFiles = new JList<>();
-		lstFiles.addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				enableDisableButtons();
-			}
-		});
-		lstFiles.setModel(mergeListModel);
-		scrollPane_1.setViewportView(lstFiles);
-		
-		JPanel pnlTabMergeRight = new JPanel();
-		pnlTabMerge.add(pnlTabMergeRight, BorderLayout.EAST);
-		
-		JPanel panel = new JPanel();
-		pnlTabMergeRight.add(panel);
-		panel.setLayout(new GridLayout(5, 1, 0, 0));
-		
-		btnRemove = new JButton(I18NLoader.getString("btnRemove.text"));
-		btnRemove.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int[] indices = lstFiles.getSelectedIndices();
-				for (int i = indices.length - 1; i >= 0; i--) {
-					mergeListModel.remove(indices[i]);
-				}
-			}
-		});
-		panel.add(btnRemove);
-		
-		btnTop = new JButton(I18NLoader.getString("btnTop.text"));
-		btnTop.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				File file = mergeListModel.remove(lstFiles.getSelectedIndex());
-				mergeListModel.add(0, file);
-				lstFiles.setSelectedIndex(0);
-			}
-		});
-		panel.add(btnTop);
-		
-		btnUp = new JButton(I18NLoader.getString("btnUp.text"));
-		btnUp.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int i = lstFiles.getSelectedIndex();
-				File file = mergeListModel.remove(i);
-				mergeListModel.add(--i, file);
-				lstFiles.setSelectedIndex(i);
-			}
-		});
-		panel.add(btnUp);
-		
-		btnDown = new JButton(I18NLoader.getString("btnDown.text"));
-		btnDown.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int i = lstFiles.getSelectedIndex();
-				File file = mergeListModel.remove(i);
-				mergeListModel.add(++i, file);
-				lstFiles.setSelectedIndex(i);
-			}
-		});
-		panel.add(btnDown);
-		
-		btnBottom = new JButton(I18NLoader.getString("btnBottom.text"));
-		btnBottom.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int i = lstFiles.getSelectedIndex();
-				File file = mergeListModel.remove(i);
-				mergeListModel.add(mergeListModel.getSize(), file);
-				lstFiles.setSelectedIndex(mergeListModel.getSize() - 1);
-			}
-		});
-		panel.add(btnBottom);
-	}
+        txtPageRange.setEnabled(false);
+        pnlTabSplitBottom.add(txtPageRange, java.awt.BorderLayout.CENTER);
 
-	// SPLIT
-	private void setActiveRadioButton(JRadioButton component) {
-		rdbtnPageRange.setEnabled(true);
-		if (component.equals(rdbtnBookmarks)) {
-			rdbtnBookmarks.setEnabled(true);
-			rdbtnBookmarks.setSelected(true);
-			rdbtnPageRange.setSelected(false);
-			txtPageRange.setEnabled(false);
-			enableBtnSplitFromBookmarks();
-		} else if (component.equals(rdbtnPageRange)) {
-			if (bookmarkListModel.getSize() == 0) {
-				rdbtnBookmarks.setEnabled(false);
-			}
-			rdbtnBookmarks.setSelected(false);
-			rdbtnPageRange.setSelected(true);
-			txtPageRange.setEnabled(true);
-			enableBtnSplitFromPageRange();
-		}
-	}
+        pnlTabSplit.add(pnlTabSplitBottom, java.awt.BorderLayout.SOUTH);
 
-	private void choosePDF() {
-		fileChooser.setCurrentDirectory(currentPath);
-		fileChooser.setSelectedFile(currentPDF);
-		fileChooser.setMultiSelectionEnabled(false);
-		if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-			currentPath = fileChooser.getCurrentDirectory();
-			currentPDF = fileChooser.getSelectedFile();
-			try {
-				extractBookmarks(currentPDF);
-				if (bookmarkListModel.getSize() == 0) {
-					setActiveRadioButton(rdbtnPageRange);
-				} else {
-					setActiveRadioButton(rdbtnBookmarks);
-				}
-				showMessage(String.format(I18NLoader.getString("file.loaded.message"), bookmarkListModel.getSize(), pdfManager.getPageCount()));
-			} catch (IOException e) {
-				showError(e);
-			}
-		}
-	}
+        tabbedPane.addTab(I18NLoader.getString("pnlTabSplit.text"), pnlTabSplit); // NOI18N
 
-	private void extractBookmarks(File pdf) throws FileNotFoundException, IOException {
-		bookmarkListModel.clear();
-		try {
-			pdfManager.load(pdf);
-			for (Bookmark bookmark : pdfManager.getBookmarks()) {
-				bookmarkListModel.addElement(bookmark);
-			}
-		} catch (BookmarkNotFoundException bnfe) {
-			showMessage(String.format(I18NLoader.getString("BookmarkNotFoundException.message"), pdf.toString()));
-		}
-	}
+        pnlTabMerge.setLayout(new java.awt.BorderLayout());
 
-	private void enableBtnSplitFromBookmarks() {
-		if (!lstBookmarks.getValueIsAdjusting()) {
-			if (lstBookmarks.getSelectedIndices().length > 0) {
-				btnSplit.setEnabled(true);
-			} else {
-				btnSplit.setEnabled(false);
-			}
-		}
-	}
+        btnLoadMerge.setText(I18NLoader.getString("btnLoadMerge.text")); // NOI18N
+        btnLoadMerge.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnLoadMergeActionPerformed(evt);
+            }
+        });
+        pnlTabMergeTop.add(btnLoadMerge);
 
-	private void enableBtnSplitFromPageRange() {
-		if (txtPageRange.getText().trim().length() > 0) {
-			btnSplit.setEnabled(true);
-		} else {
-			btnSplit.setEnabled(false);
-		}
-	}
+        btnMerge.setText(I18NLoader.getString("btnMerge.text")); // NOI18N
+        btnMerge.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnMergeActionPerformed(evt);
+            }
+        });
+        pnlTabMergeTop.add(btnMerge);
 
-	private void splitPdf() {
-		try {
-			directoryChooser.setCurrentDirectory(currentOutPath);
-			if (rdbtnPageRange.isSelected()) {
-				if (txtPageRange.getText().trim().length() == 0)
-					throw new Exception("Pattern not valid!");
-			}
-			if (currentOutPath == null) {
-				currentOutPath = currentPath;
-			}
-			if (directoryChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-				currentOutPath = directoryChooser.getSelectedFile();
-				List<Bookmark> bookmarks = new ArrayList<>();
-				if (rdbtnBookmarks.isSelected()) {
-					bookmarks.addAll(lstBookmarks.getSelectedValuesList());
-				} else if (rdbtnPageRange.isSelected()) {
-					String[] p1 = txtPageRange.getText().trim().split(",");
-					for (String s : p1) {
-						String[] p2 = s.split("-");
-						int firstPage = Integer.parseInt(p2[0]);
-						int lastPage = firstPage;
-						if (p2.length == 2) {
-							lastPage = Integer.parseInt(p2[1]);
-						}
-						String title = String.format("%s [%s-%s]", currentPDF.getName(), firstPage, lastPage);
-						Bookmark bookmark = new Bookmark(title, firstPage, lastPage);
-						bookmarks.add(bookmark);
-					}
-				}
-				Map<Integer, byte[]> pdfs = pdfManager.split(bookmarks);
-				for (int id : pdfs.keySet()) {
-					String title = PDFManager.convertTitleToFileName(bookmarks.get(id).getTitle());
-					String fileName = String.format("%s - %s.pdf", id, title);
-					String out = Paths.get(currentOutPath.toString(), fileName).toString();
-					try (FileOutputStream fos = new FileOutputStream(out)) {
-						fos.write(pdfs.get(id));
-					}
-				}
-				showMessage(I18NLoader.getString("process.done.message"));
-			}
-		} catch (Exception e) {
-			showError(e);
-		}
-	}
+        pnlTabMerge.add(pnlTabMergeTop, java.awt.BorderLayout.NORTH);
 
-	// MERGE
-	private void choosePDFs() {
-		fileChooser.setCurrentDirectory(currentPath);
-		fileChooser.setSelectedFile(currentPDF);
-		fileChooser.setMultiSelectionEnabled(true);
-		if (fileChooser.showOpenDialog(frame) == JFileChooser.APPROVE_OPTION) {
-			mergeListModel.clear();
-			currentPath = fileChooser.getCurrentDirectory();
-			for (File pdf : fileChooser.getSelectedFiles()) {
-				mergeListModel.addElement(pdf);
-			}
-		}
-		if (mergeListModel.getSize() < 2) {
-			btnMerge.setEnabled(false);
-		} else {
-			btnMerge.setEnabled(true);
-		}
-	}
-	
-	private void enableDisableButtons() {
-		int[] selectedIndices=lstFiles.getSelectedIndices();
-		switch (selectedIndices.length) {
-		case 0:
-			btnRemove.setEnabled(false);
-			btnTop.setEnabled(false);
-			btnUp.setEnabled(false);
-			btnDown.setEnabled(false);
-			btnBottom.setEnabled(false);
-			break;
-		case 1:
-			btnRemove.setEnabled(true);
-			if (lstFiles.isSelectedIndex(0)) {
-				btnTop.setEnabled(false);
-				btnUp.setEnabled(false);
-				btnDown.setEnabled(true);
-				btnBottom.setEnabled(true);
-			} else if (lstFiles.isSelectedIndex(mergeListModel.getSize() - 1)) {
-				btnTop.setEnabled(true);
-				btnUp.setEnabled(true);
-				btnDown.setEnabled(false);
-				btnBottom.setEnabled(false);
-			} else {
-				btnTop.setEnabled(true);
-				btnUp.setEnabled(true);
-				btnDown.setEnabled(true);
-				btnBottom.setEnabled(true);
-			}
-			break;
-		default:
-			btnRemove.setEnabled(true);
-			btnTop.setEnabled(false);
-			btnUp.setEnabled(false);
-			btnDown.setEnabled(false);
-			btnBottom.setEnabled(false);
-			break;
-		}
-	}
+        pnlTabMergeCenter.setLayout(new java.awt.BorderLayout());
 
-	private void mergeFiles() {
-		try {
-			fileChooser.setMultiSelectionEnabled(false);
-			fileChooser.setSelectedFile(null);
-			if (fileChooser.showSaveDialog(frame) == JFileChooser.APPROVE_OPTION) {
-				List<File> files = new ArrayList<>(mergeListModel.getSize());
-				for (int i = 0; i < mergeListModel.getSize(); i++) {
-					files.add(mergeListModel.get(i));
-				}
-				byte[] pdf = pdfManager.merge(files);
-				try (FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
-					fos.write(pdf);
-				}
-				showMessage(I18NLoader.getString("process.done.message"));
-			}
-		} catch (Exception e) {
-			showError(e);
-		}
-	}
-	
-	// COMMON
-	private void showError(Throwable t) {
-		try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
-			t.printStackTrace(pw);
-			ErrorPanel errorPanel = new ErrorPanel(sw.toString());
-			JOptionPane.showMessageDialog(frame, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
-		} catch (Exception e2) {
-			// do nothing
-		}
-	}
-	
-	private void showMessage(String message) {
-		JOptionPane.showMessageDialog(frame, message, MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
-	}
+        lstFiles.setModel(mergeListModel);
+        lstFiles.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                lstFilesValueChanged(evt);
+            }
+        });
+        scrollPane_1.setViewportView(lstFiles);
+
+        pnlTabMergeCenter.add(scrollPane_1, java.awt.BorderLayout.CENTER);
+
+        pnlTabMergeRight.setLayout(new java.awt.GridLayout(8, 1));
+
+        btnRemove.setText(I18NLoader.getString("btnRemove.text")); // NOI18N
+        btnRemove.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRemoveActionPerformed(evt);
+            }
+        });
+        pnlTabMergeRight.add(btnRemove);
+
+        btnTop.setText(I18NLoader.getString("btnTop.text")); // NOI18N
+        btnTop.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnTopActionPerformed(evt);
+            }
+        });
+        pnlTabMergeRight.add(btnTop);
+
+        btnUp.setText(I18NLoader.getString("btnUp.text")); // NOI18N
+        btnUp.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnUpActionPerformed(evt);
+            }
+        });
+        pnlTabMergeRight.add(btnUp);
+
+        btnDown.setText(I18NLoader.getString("btnDown.text")); // NOI18N
+        btnDown.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnDownActionPerformed(evt);
+            }
+        });
+        pnlTabMergeRight.add(btnDown);
+
+        btnBottom.setText(I18NLoader.getString("btnBottom.text")); // NOI18N
+        btnBottom.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnBottomActionPerformed(evt);
+            }
+        });
+        pnlTabMergeRight.add(btnBottom);
+
+        pnlTabMergeCenter.add(pnlTabMergeRight, java.awt.BorderLayout.EAST);
+
+        pnlTabMerge.add(pnlTabMergeCenter, java.awt.BorderLayout.CENTER);
+
+        tabbedPane.addTab(I18NLoader.getString("pnlTabMerge.text"), pnlTabMerge); // NOI18N
+
+        getContentPane().add(tabbedPane, java.awt.BorderLayout.CENTER);
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    // Event handler
+    // <editor-fold defaultstate="collapsed" desc="Window">
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        if (pdfManager != null) {
+            try {
+                pdfManager.close();
+            } catch (IOException ioe) {
+                showError(ioe);
+            }
+        }
+    }//GEN-LAST:event_formWindowClosing
+
+    private void btnLoadSplitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoadSplitActionPerformed
+        choosePDF();
+    }//GEN-LAST:event_btnLoadSplitActionPerformed
+
+    private void btnSplitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSplitActionPerformed
+        splitPdf();
+    }//GEN-LAST:event_btnSplitActionPerformed
+
+    private void rdbtnBookmarksActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rdbtnBookmarksActionPerformed
+        setActiveRadioButton(rdbtnBookmarks);
+    }//GEN-LAST:event_rdbtnBookmarksActionPerformed
+
+    private void rdbtnPageRangeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rdbtnPageRangeActionPerformed
+        setActiveRadioButton(rdbtnPageRange);
+    }//GEN-LAST:event_rdbtnPageRangeActionPerformed
+
+    private void btnLoadMergeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnLoadMergeActionPerformed
+        choosePDFs();
+    }//GEN-LAST:event_btnLoadMergeActionPerformed
+
+    private void btnMergeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnMergeActionPerformed
+        mergeFiles();
+    }//GEN-LAST:event_btnMergeActionPerformed
+
+    private void lstFilesValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_lstFilesValueChanged
+        enableDisableButtons();
+    }//GEN-LAST:event_lstFilesValueChanged
+
+    private void btnRemoveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRemoveActionPerformed
+        int[] indices = lstFiles.getSelectedIndices();
+        for (int i = indices.length - 1; i >= 0; i--) {
+            mergeListModel.remove(indices[i]);
+        }
+    }//GEN-LAST:event_btnRemoveActionPerformed
+
+    private void btnTopActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTopActionPerformed
+        File file = mergeListModel.remove(lstFiles.getSelectedIndex());
+        mergeListModel.add(0, file);
+        lstFiles.setSelectedIndex(0);
+    }//GEN-LAST:event_btnTopActionPerformed
+
+    private void btnUpActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnUpActionPerformed
+        int i = lstFiles.getSelectedIndex();
+        File file = mergeListModel.remove(i);
+        mergeListModel.add(--i, file);
+        lstFiles.setSelectedIndex(i);
+    }//GEN-LAST:event_btnUpActionPerformed
+
+    private void btnDownActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDownActionPerformed
+        int i = lstFiles.getSelectedIndex();
+        File file = mergeListModel.remove(i);
+        mergeListModel.add(++i, file);
+        lstFiles.setSelectedIndex(i);
+    }//GEN-LAST:event_btnDownActionPerformed
+
+    private void btnBottomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBottomActionPerformed
+        int i = lstFiles.getSelectedIndex();
+        File file = mergeListModel.remove(i);
+        mergeListModel.add(mergeListModel.getSize(), file);
+        lstFiles.setSelectedIndex(mergeListModel.getSize() - 1);
+    }//GEN-LAST:event_btnBottomActionPerformed
+
+    private void lstBookmarksValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_lstBookmarksValueChanged
+        enableBtnSplitFromBookmarks();
+    }//GEN-LAST:event_lstBookmarksValueChanged
+    // </editor-fold>
+    // <editor-fold defaultstate="collapsed" desc="SPLIT">
+    private void setActiveRadioButton(JRadioButton component) {
+        rdbtnPageRange.setEnabled(true);
+        if (component.equals(rdbtnBookmarks)) {
+            rdbtnBookmarks.setEnabled(true);
+            rdbtnBookmarks.setSelected(true);
+            rdbtnPageRange.setSelected(false);
+            txtPageRange.setEnabled(false);
+            enableBtnSplitFromBookmarks();
+        } else if (component.equals(rdbtnPageRange)) {
+            if (bookmarkListModel.getSize() == 0) {
+                rdbtnBookmarks.setEnabled(false);
+            }
+            rdbtnBookmarks.setSelected(false);
+            rdbtnPageRange.setSelected(true);
+            txtPageRange.setEnabled(true);
+            enableBtnSplitFromPageRange();
+        }
+    }
+
+    private void choosePDF() {
+        fileChooser.setCurrentDirectory(currentPath);
+        fileChooser.setSelectedFile(currentPDF);
+        fileChooser.setMultiSelectionEnabled(false);
+        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            currentPath = fileChooser.getCurrentDirectory();
+            currentPDF = fileChooser.getSelectedFile();
+            try {
+                extractBookmarks(currentPDF);
+                if (bookmarkListModel.getSize() == 0) {
+                    setActiveRadioButton(rdbtnPageRange);
+                } else {
+                    setActiveRadioButton(rdbtnBookmarks);
+                }
+                showMessage(String.format(I18NLoader.getString("file.loaded.message"), bookmarkListModel.getSize(), pdfManager.getPageCount()));
+            } catch (IOException e) {
+                showError(e);
+            }
+        }
+    }
+
+    private void extractBookmarks(File pdf) throws FileNotFoundException, IOException {
+        bookmarkListModel.clear();
+        try {
+            pdfManager.load(pdf);
+            pdfManager.getBookmarks().forEach((bookmark) -> {
+                bookmarkListModel.addElement(bookmark);
+            });
+        } catch (BookmarkNotFoundException bnfe) {
+            showMessage(String.format(I18NLoader.getString("BookmarkNotFoundException.message"), pdf.toString()));
+        }
+    }
+
+    private void enableBtnSplitFromBookmarks() {
+        if (!lstBookmarks.getValueIsAdjusting()) {
+            if (lstBookmarks.getSelectedIndices().length > 0) {
+                btnSplit.setEnabled(true);
+            } else {
+                btnSplit.setEnabled(false);
+            }
+        }
+    }
+
+    private void enableBtnSplitFromPageRange() {
+        if (txtPageRange.getText().trim().length() > 0) {
+            btnSplit.setEnabled(true);
+        } else {
+            btnSplit.setEnabled(false);
+        }
+    }
+
+    private void splitPdf() {
+        try {
+            directoryChooser.setCurrentDirectory(currentOutPath);
+            if (rdbtnPageRange.isSelected()) {
+                if (txtPageRange.getText().trim().length() == 0) {
+                    throw new Exception("Pattern not valid!");
+                }
+            }
+            if (currentOutPath == null) {
+                currentOutPath = currentPath;
+            }
+            if (directoryChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                currentOutPath = directoryChooser.getSelectedFile();
+                List<Bookmark> bookmarks = new ArrayList<>();
+                if (rdbtnBookmarks.isSelected()) {
+                    bookmarks.addAll(lstBookmarks.getSelectedValuesList());
+                } else if (rdbtnPageRange.isSelected()) {
+                    String[] p1 = txtPageRange.getText().trim().split(",");
+                    for (String s : p1) {
+                        String[] p2 = s.split("-");
+                        int firstPage = Integer.parseInt(p2[0]);
+                        int lastPage = firstPage;
+                        if (p2.length == 2) {
+                            lastPage = Integer.parseInt(p2[1]);
+                        }
+                        String title = String.format("%s [%s-%s]", currentPDF.getName(), firstPage, lastPage);
+                        Bookmark bookmark = new Bookmark(title, firstPage, lastPage);
+                        bookmarks.add(bookmark);
+                    }
+                }
+                Map<Integer, byte[]> pdfs = pdfManager.split(bookmarks);
+                for (int id : pdfs.keySet()) {
+                    String title = PDFManager.convertTitleToFileName(bookmarks.get(id).getTitle());
+                    String fileName = String.format("%s - %s.pdf", id, title);
+                    String out = Paths.get(currentOutPath.toString(), fileName).toString();
+                    try (FileOutputStream fos = new FileOutputStream(out)) {
+                        fos.write(pdfs.get(id));
+                    }
+                }
+                showMessage(I18NLoader.getString("process.done.message"));
+            }
+        } catch (Exception e) {
+            showError(e);
+        }
+    }
+//</editor-fold>
+// <editor-fold defaultstate="collapsed" desc="Merge">
+
+    private void choosePDFs() {
+        fileChooser.setCurrentDirectory(currentPath);
+        fileChooser.setSelectedFile(currentPDF);
+        fileChooser.setMultiSelectionEnabled(true);
+        if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            mergeListModel.clear();
+            currentPath = fileChooser.getCurrentDirectory();
+            for (File pdf : fileChooser.getSelectedFiles()) {
+                mergeListModel.addElement(pdf);
+            }
+        }
+        if (mergeListModel.getSize() < 2) {
+            btnMerge.setEnabled(false);
+        } else {
+            btnMerge.setEnabled(true);
+        }
+    }
+
+    private void enableDisableButtons() {
+        int[] selectedIndices = lstFiles.getSelectedIndices();
+        switch (selectedIndices.length) {
+            case 0:
+                btnRemove.setEnabled(false);
+                btnTop.setEnabled(false);
+                btnUp.setEnabled(false);
+                btnDown.setEnabled(false);
+                btnBottom.setEnabled(false);
+                break;
+            case 1:
+                btnRemove.setEnabled(true);
+                if (lstFiles.isSelectedIndex(0)) {
+                    btnTop.setEnabled(false);
+                    btnUp.setEnabled(false);
+                    btnDown.setEnabled(true);
+                    btnBottom.setEnabled(true);
+                } else if (lstFiles.isSelectedIndex(mergeListModel.getSize() - 1)) {
+                    btnTop.setEnabled(true);
+                    btnUp.setEnabled(true);
+                    btnDown.setEnabled(false);
+                    btnBottom.setEnabled(false);
+                } else {
+                    btnTop.setEnabled(true);
+                    btnUp.setEnabled(true);
+                    btnDown.setEnabled(true);
+                    btnBottom.setEnabled(true);
+                }
+                break;
+            default:
+                btnRemove.setEnabled(true);
+                btnTop.setEnabled(false);
+                btnUp.setEnabled(false);
+                btnDown.setEnabled(false);
+                btnBottom.setEnabled(false);
+                break;
+        }
+    }
+
+    private void mergeFiles() {
+        try {
+            fileChooser.setMultiSelectionEnabled(false);
+            fileChooser.setSelectedFile(null);
+            if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+                List<File> files = new ArrayList<>(mergeListModel.getSize());
+                for (int i = 0; i < mergeListModel.getSize(); i++) {
+                    files.add(mergeListModel.get(i));
+                }
+                byte[] pdf = pdfManager.merge(files);
+                try (FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
+                    fos.write(pdf);
+                }
+                showMessage(I18NLoader.getString("process.done.message"));
+            }
+        } catch (HeadlessException | IOException e) {
+            showError(e);
+        }
+    }
+// </editor/fold>
+// <editor-fold defaultstate="collapsed" desc="COMMON">
+
+    private void showError(Throwable t) {
+        try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
+            t.printStackTrace(pw);
+            ErrorPanel errorPanel = new ErrorPanel(sw.toString());
+            JOptionPane.showMessageDialog(this, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e2) {
+            // do nothing
+        }
+    }
+
+    private void showMessage(String message) {
+        JOptionPane.showMessageDialog(this, message, MAIN_TITLE, JOptionPane.INFORMATION_MESSAGE);
+    }
+// </editor/fold>
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnBottom;
+    private javax.swing.JButton btnDown;
+    private javax.swing.JButton btnLoadMerge;
+    private javax.swing.JButton btnLoadSplit;
+    private javax.swing.JButton btnMerge;
+    private javax.swing.JButton btnRemove;
+    private javax.swing.JButton btnSplit;
+    private javax.swing.JButton btnTop;
+    private javax.swing.JButton btnUp;
+    private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JList<Bookmark> lstBookmarks;
+    private javax.swing.JList<File> lstFiles;
+    private javax.swing.JPanel pnlTabMerge;
+    private javax.swing.JPanel pnlTabMergeCenter;
+    private javax.swing.JPanel pnlTabMergeRight;
+    private javax.swing.JPanel pnlTabMergeTop;
+    private javax.swing.JPanel pnlTabSplit;
+    private javax.swing.JPanel pnlTabSplitBottom;
+    private javax.swing.JPanel pnlTabSplitCenter;
+    private javax.swing.JPanel pnlTabSplitTop;
+    private javax.swing.JRadioButton rdbtnBookmarks;
+    private javax.swing.JRadioButton rdbtnPageRange;
+    private javax.swing.JScrollPane scrollPane;
+    private javax.swing.JScrollPane scrollPane_1;
+    private javax.swing.JTabbedPane tabbedPane;
+    private javax.swing.JTextField txtPageRange;
+    // End of variables declaration//GEN-END:variables
 }

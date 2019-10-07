@@ -1,6 +1,6 @@
 
-# Created by https://www.gitignore.io/api/macos,maven,windows,eclipse
-# Edit at https://www.gitignore.io/?templates=macos,maven,windows,eclipse
+# Created by https://www.gitignore.io/api/macos,maven,windows,eclipse,netbeans
+# Edit at https://www.gitignore.io/?templates=macos,maven,windows,eclipse,netbeans
 
 ### Eclipse ###
 .metadata
@@ -112,6 +112,17 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 .flattened-pom.xml
 
+### NetBeans ###
+**/nbproject/private/
+**/nbproject/Makefile-*.mk
+**/nbproject/Package-*.bash
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+nbactions.xml
+
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
@@ -138,5 +149,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-# End of https://www.gitignore.io/api/macos,maven,windows,eclipse
-
+# End of https://www.gitignore.io/api/macos,maven,windows,eclipse,netbeans
