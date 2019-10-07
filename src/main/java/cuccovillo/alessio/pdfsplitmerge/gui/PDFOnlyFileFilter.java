@@ -24,14 +24,14 @@ import cuccovillo.alessio.pdfsplitmerge.i18n.I18NLoader;
 
 public class PDFOnlyFileFilter extends FileFilter {
 
-	@Override
-	public boolean accept(File f) {
-		return f.isDirectory() || (f.isFile() && f.getName().toLowerCase().endsWith(".pdf"));
-	}
+    @Override
+    public boolean accept(File f) {
+        return f.isDirectory() || (f.isFile() && f.getName().toLowerCase().endsWith(".pdf"));
+    }
 
-	@Override
-	public String getDescription() {
-		return I18NLoader.getString("filefilter.description");
-	}
+    @Override
+    public String getDescription() {
+        return I18NLoader.getString("filefilter.description");
+    }
 
 }
