@@ -36,6 +36,7 @@ import cuccovillo.alessio.pdfsplitmerge.exceptions.BookmarkNotFoundException;
 import cuccovillo.alessio.pdfsplitmerge.i18n.I18NLoader;
 import cuccovillo.alessio.pdfsplitmerge.model.Bookmark;
 import cuccovillo.alessio.pdfsplitmerge.pdf.PDFManager;
+import java.awt.GridLayout;
 
 public class Main {
 	private JFrame frame;
@@ -47,6 +48,11 @@ public class Main {
 	private JButton btnMerge;
 	private JButton btnSplit;
 	private JButton btnLoadMerge;
+	private JButton btnRemove;
+	private JButton btnTop;
+	private JButton btnUp;
+	private JButton btnDown;
+	private JButton btnBottom;
 	/**
 	 * @wbp.nonvisual location=24,329
 	 */
@@ -223,8 +229,74 @@ public class Main {
 		pnlTabMergeCenter.add(scrollPane_1);
 
 		lstFiles = new JList<>();
+		lstFiles.addListSelectionListener(new ListSelectionListener() {
+			public void valueChanged(ListSelectionEvent e) {
+				enableDisableButtons();
+			}
+		});
 		lstFiles.setModel(mergeListModel);
 		scrollPane_1.setViewportView(lstFiles);
+		
+		JPanel pnlTabMergeRight = new JPanel();
+		pnlTabMerge.add(pnlTabMergeRight, BorderLayout.EAST);
+		
+		JPanel panel = new JPanel();
+		pnlTabMergeRight.add(panel);
+		panel.setLayout(new GridLayout(5, 1, 0, 0));
+		
+		btnRemove = new JButton(I18NLoader.getString("btnRemove.text"));
+		btnRemove.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int[] indices = lstFiles.getSelectedIndices();
+				for (int i = indices.length - 1; i >= 0; i--) {
+					mergeListModel.remove(indices[i]);
+				}
+			}
+		});
+		panel.add(btnRemove);
+		
+		btnTop = new JButton(I18NLoader.getString("btnTop.text"));
+		btnTop.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				File file = mergeListModel.remove(lstFiles.getSelectedIndex());
+				mergeListModel.add(0, file);
+				lstFiles.setSelectedIndex(0);
+			}
+		});
+		panel.add(btnTop);
+		
+		btnUp = new JButton(I18NLoader.getString("btnUp.text"));
+		btnUp.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int i = lstFiles.getSelectedIndex();
+				File file = mergeListModel.remove(i);
+				mergeListModel.add(--i, file);
+				lstFiles.setSelectedIndex(i);
+			}
+		});
+		panel.add(btnUp);
+		
+		btnDown = new JButton(I18NLoader.getString("btnDown.text"));
+		btnDown.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int i = lstFiles.getSelectedIndex();
+				File file = mergeListModel.remove(i);
+				mergeListModel.add(++i, file);
+				lstFiles.setSelectedIndex(i);
+			}
+		});
+		panel.add(btnDown);
+		
+		btnBottom = new JButton(I18NLoader.getString("btnBottom.text"));
+		btnBottom.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int i = lstFiles.getSelectedIndex();
+				File file = mergeListModel.remove(i);
+				mergeListModel.add(mergeListModel.getSize(), file);
+				lstFiles.setSelectedIndex(mergeListModel.getSize() - 1);
+			}
+		});
+		panel.add(btnBottom);
 	}
 
 	// SPLIT
@@ -359,6 +431,45 @@ public class Main {
 			btnMerge.setEnabled(false);
 		} else {
 			btnMerge.setEnabled(true);
+		}
+	}
+	
+	private void enableDisableButtons() {
+		int[] selectedIndices=lstFiles.getSelectedIndices();
+		switch (selectedIndices.length) {
+		case 0:
+			btnRemove.setEnabled(false);
+			btnTop.setEnabled(false);
+			btnUp.setEnabled(false);
+			btnDown.setEnabled(false);
+			btnBottom.setEnabled(false);
+			break;
+		case 1:
+			btnRemove.setEnabled(true);
+			if (lstFiles.isSelectedIndex(0)) {
+				btnTop.setEnabled(false);
+				btnUp.setEnabled(false);
+				btnDown.setEnabled(true);
+				btnBottom.setEnabled(true);
+			} else if (lstFiles.isSelectedIndex(mergeListModel.getSize() - 1)) {
+				btnTop.setEnabled(true);
+				btnUp.setEnabled(true);
+				btnDown.setEnabled(false);
+				btnBottom.setEnabled(false);
+			} else {
+				btnTop.setEnabled(true);
+				btnUp.setEnabled(true);
+				btnDown.setEnabled(true);
+				btnBottom.setEnabled(true);
+			}
+			break;
+		default:
+			btnRemove.setEnabled(true);
+			btnTop.setEnabled(false);
+			btnUp.setEnabled(false);
+			btnDown.setEnabled(false);
+			btnBottom.setEnabled(false);
+			break;
 		}
 	}
 
