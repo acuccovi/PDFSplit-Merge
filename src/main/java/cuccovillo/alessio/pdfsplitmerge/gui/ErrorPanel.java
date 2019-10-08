@@ -26,10 +26,11 @@ import javax.swing.JTextArea;
 public class ErrorPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
-    private JTextArea textArea;
+    private final JTextArea textArea;
 
     /**
      * Create the panel.
+     * @param message
      */
     public ErrorPanel(String message) {
         setPreferredSize(new Dimension(640, 400));

@@ -73,8 +73,8 @@ public class PDFManager {
     /**
      * Split the input file based on the selected bookmark(s)
      *
-     * @param path
      * @param bookmarks
+     * @return
      * @throws IOException
      */
     public Map<Integer, byte[]> split(List<Bookmark> bookmarks) throws IOException {
@@ -84,11 +84,12 @@ public class PDFManager {
             int start = bookmark.getFirstPage() == bookmark.getLastPage() ? bookmark.getFirstPage()
                     : bookmark.getFirstPage() + 1;
             PageExtractor pe = new PageExtractor(document, start, bookmark.getLastPage());
-            PDDocument outDoc = pe.extract();
-            optimize(outDoc);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            outDoc.save(baos);
-            outDoc.close();
+            ByteArrayOutputStream baos;
+            try ( PDDocument outDoc = pe.extract()) {
+                optimize(outDoc);
+                baos = new ByteArrayOutputStream();
+                outDoc.save(baos);
+            }
             output.put(i, baos.toByteArray());
             i++;
         }
@@ -115,7 +116,7 @@ public class PDFManager {
     }
 
     private List<Bookmark> findBookmarks() throws IOException {
-        List<Bookmark> bookmarks = new ArrayList<>();
+        List<Bookmark> _bookmarks = new ArrayList<>();
         PDDocumentOutline outline = document.getDocumentCatalog().getDocumentOutline();
         try {
             if (outline == null) {
@@ -126,25 +127,24 @@ public class PDFManager {
                 PDDestination destination = current.getDestination();
                 PDPageDestination pd = findValidBookmark(destination);
                 Bookmark bookmark = new Bookmark(current.getTitle(), pd);
-                bookmarks.add(bookmark);
-                if (bookmarks.size() > 1) {
-                    Bookmark previuos = bookmarks.get((bookmarks.size() - 1) - 1);
+                _bookmarks.add(bookmark);
+                if (_bookmarks.size() > 1) {
+                    Bookmark previuos = _bookmarks.get((_bookmarks.size() - 1) - 1);
                     if (previuos != null) {
                         previuos.setLastPage(bookmark.getFirstPage());
                     }
                 }
                 current = current.getNextSibling();
             }
-            Bookmark last = bookmarks.get(bookmarks.size() - 1);
+            Bookmark last = _bookmarks.get(_bookmarks.size() - 1);
             last.setLastPage(getPageCount());
         } catch (BookmarkNotFoundException e) {
             // nothing to do!
         }
-        return bookmarks;
+        return _bookmarks;
     }
 
-    private PDPageDestination findValidBookmark(PDDestination destination)
-            throws IOException, BookmarkNotFoundException {
+    private PDPageDestination findValidBookmark(PDDestination destination) throws IOException, BookmarkNotFoundException {
         PDPageDestination pd = null;
         if (destination instanceof PDNamedDestination) {
             pd = document.getDocumentCatalog().findNamedDestinationPage((PDNamedDestination) destination);
@@ -164,20 +164,13 @@ public class PDFManager {
             final PDPage page = doc.getPage(pageNumber);
             COSDictionary pageDictionary = (COSDictionary) page.getResources().getCOSObject().getDictionaryObject(COSName.FONT);
             if (pageDictionary != null) {
-                for (COSName currentFont : pageDictionary.keySet()) {
-                    COSDictionary fontDictionary = (COSDictionary) pageDictionary.getDictionaryObject(currentFont);
-                    for (COSName actualFont : fontDictionary.keySet()) {
-                        COSBase actualFontDictionaryObject = fontDictionary.getDictionaryObject(actualFont);
-                        if (actualFontDictionaryObject instanceof COSDictionary) {
-                            COSDictionary fontFile = (COSDictionary) actualFontDictionaryObject;
-                            if (fontFile.getItem(COSName.FONT_NAME) instanceof COSName) {
-                                COSName fontName = (COSName) fontFile.getItem(COSName.FONT_NAME);
-                                fontFileCache.computeIfAbsent(fontName.getName(), key -> fontFile.getItem(COSName.FONT_FILE2));
-                                fontFile.setItem(COSName.FONT_FILE2, fontFileCache.get(fontName.getName()));
-                            }
-                        }
-                    }
-                }
+                pageDictionary.keySet().stream().map((currentFont) -> (COSDictionary) pageDictionary.getDictionaryObject(currentFont)).forEachOrdered((fontDictionary) -> {
+                    fontDictionary.keySet().stream().map((actualFont) -> fontDictionary.getDictionaryObject(actualFont)).filter((actualFontDictionaryObject) -> (actualFontDictionaryObject instanceof COSDictionary)).map((actualFontDictionaryObject) -> (COSDictionary) actualFontDictionaryObject).filter((fontFile) -> (fontFile.getItem(COSName.FONT_NAME) instanceof COSName)).forEachOrdered((fontFile) -> {
+                        COSName fontName = (COSName) fontFile.getItem(COSName.FONT_NAME);
+                        fontFileCache.computeIfAbsent(fontName.getName(), key -> fontFile.getItem(COSName.FONT_FILE2));
+                        fontFile.setItem(COSName.FONT_FILE2, fontFileCache.get(fontName.getName()));
+                    });
+                });
             }
         }
     }

@@ -1,7 +1,18 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package cuccovillo.alessio.pdfsplitmerge.gui;
 
@@ -446,7 +457,7 @@ public class Main extends javax.swing.JFrame {
                     String title = PDFManager.convertTitleToFileName(bookmarks.get(id).getTitle());
                     String fileName = String.format("%s - %s.pdf", id, title);
                     String out = Paths.get(currentOutPath.toString(), fileName).toString();
-                    try (FileOutputStream fos = new FileOutputStream(out)) {
+                    try ( FileOutputStream fos = new FileOutputStream(out)) {
                         fos.write(pdfs.get(id));
                     }
                 }
@@ -526,7 +537,7 @@ public class Main extends javax.swing.JFrame {
                     files.add(mergeListModel.get(i));
                 }
                 byte[] pdf = pdfManager.merge(files);
-                try (FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
+                try ( FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
                     fos.write(pdf);
                 }
                 showMessage(I18NLoader.getString("process.done.message"));
@@ -539,7 +550,7 @@ public class Main extends javax.swing.JFrame {
 // <editor-fold defaultstate="collapsed" desc="COMMON">
 
     private void showError(Throwable t) {
-        try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
+        try ( StringWriter sw = new StringWriter();  PrintWriter pw = new PrintWriter(sw);) {
             t.printStackTrace(pw);
             ErrorPanel errorPanel = new ErrorPanel(sw.toString());
             JOptionPane.showMessageDialog(this, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
