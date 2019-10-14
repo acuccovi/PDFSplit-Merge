@@ -17,39 +17,21 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <developers>
-        <developer>
-            <name>Alessio Cuccovillo</name>
-            <email>alessio.cuccovillo@gmail.com</email>
-            <roles>
-                <role>Founder</role>
-                <role>Developer</role>
-                <role>Committer</role>
-            </roles>
-        </developer>
-    </developers>
+    <parent>
+        <groupId>cuccovillo.alessio.pdfsplitmerge</groupId>
+        <artifactId>pdfsplitmerge-pom</artifactId>
+        <version>1</version>
+    </parent>
     <groupId>cuccovillo.alessio.pdfsplitmerge</groupId>
-    <artifactId>pdfsplitmerge-pom</artifactId>
+    <artifactId>pdfsplitmerge-lib</artifactId>
     <version>1</version>
-    <name>PDF Split&amp;Merge POM</name>
-    <description>PDF Split&amp;Merge POM</description>
-    <packaging>pom</packaging>
-    <properties>
-        <maven.compiler.target>13</maven.compiler.target>
-        <maven.compiler.source>13</maven.compiler.source>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
-            </plugin>
-        </plugins>
-    </build>
-    <modules>
-        <module>cuccovillo.alessio.pdfsplitmerge.lib</module>
-        <module>cuccovillo.alessio.pdfsplitmerge</module>
-    </modules>
+    <name>PDF Split&amp;Merge LIB</name>
+    <description>PDF Split&amp;Merge LIB</description>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.17</version>
+        </dependency>
+    </dependencies>
 </project>

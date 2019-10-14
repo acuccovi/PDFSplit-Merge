@@ -85,7 +85,7 @@ public class PDFManager {
                     : bookmark.getFirstPage() + 1;
             PageExtractor pe = new PageExtractor(document, start, bookmark.getLastPage());
             ByteArrayOutputStream baos;
-            try ( PDDocument outDoc = pe.extract()) {
+            try (PDDocument outDoc = pe.extract()) {
                 optimize(outDoc);
                 baos = new ByteArrayOutputStream();
                 outDoc.save(baos);
