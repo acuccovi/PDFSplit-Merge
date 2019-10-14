@@ -35,6 +35,8 @@ import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.JRadioButton;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 /**
  *
@@ -80,6 +82,24 @@ public class Main extends javax.swing.JFrame {
         directoryChooser.setFileFilter(new DirectoryOnlyFileFilter());
 
         initComponents();
+
+        txtPageRange.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                enableBtnSplitFromPageRange();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                enableBtnSplitFromPageRange();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                enableBtnSplitFromPageRange();
+            }
+
+        });
     }
 
     /**
@@ -457,7 +477,7 @@ public class Main extends javax.swing.JFrame {
                     String title = PDFManager.convertTitleToFileName(bookmarks.get(id).getTitle());
                     String fileName = String.format("%s - %s.pdf", id, title);
                     String out = Paths.get(currentOutPath.toString(), fileName).toString();
-                    try ( FileOutputStream fos = new FileOutputStream(out)) {
+                    try (FileOutputStream fos = new FileOutputStream(out)) {
                         fos.write(pdfs.get(id));
                     }
                 }
@@ -537,7 +557,7 @@ public class Main extends javax.swing.JFrame {
                     files.add(mergeListModel.get(i));
                 }
                 byte[] pdf = pdfManager.merge(files);
-                try ( FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
+                try (FileOutputStream fos = new FileOutputStream(fileChooser.getSelectedFile())) {
                     fos.write(pdf);
                 }
                 showMessage(I18NLoader.getString("process.done.message"));
@@ -550,7 +570,7 @@ public class Main extends javax.swing.JFrame {
 // <editor-fold defaultstate="collapsed" desc="COMMON">
 
     private void showError(Throwable t) {
-        try ( StringWriter sw = new StringWriter();  PrintWriter pw = new PrintWriter(sw);) {
+        try (StringWriter sw = new StringWriter(); PrintWriter pw = new PrintWriter(sw);) {
             t.printStackTrace(pw);
             ErrorPanel errorPanel = new ErrorPanel(sw.toString());
             JOptionPane.showMessageDialog(this, errorPanel, MAIN_TITLE, JOptionPane.ERROR_MESSAGE);
