@@ -463,11 +463,15 @@ public class Main extends javax.swing.JFrame {
                     for (String s : p1) {
                         String[] p2 = s.split("-");
                         int firstPage = Integer.parseInt(p2[0]);
+                        String titleFirstPage = "" + firstPage;
+                        if (firstPage > 1) {
+                            firstPage--;
+                        }
                         int lastPage = firstPage;
                         if (p2.length == 2) {
                             lastPage = Integer.parseInt(p2[1]);
                         }
-                        String title = String.format("%s [%s-%s]", currentPDF.getName(), firstPage, lastPage);
+                        String title = String.format("%s [%s-%s]", currentPDF.getName(), titleFirstPage, lastPage);
                         Bookmark bookmark = new Bookmark(title, firstPage, lastPage);
                         bookmarks.add(bookmark);
                     }
