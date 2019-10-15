@@ -35,8 +35,6 @@
     <description>PDF Split&amp;Merge POM</description>
     <packaging>pom</packaging>
     <properties>
-        <maven.compiler.target>13</maven.compiler.target>
-        <maven.compiler.source>13</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <build>
@@ -44,7 +42,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>3.8.1</version>
+                <configuration>
+                    <release>13</release>
+                </configuration>
             </plugin>
         </plugins>
     </build>
